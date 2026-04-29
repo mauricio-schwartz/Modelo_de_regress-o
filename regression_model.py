@@ -2,7 +2,7 @@
 Modelo de Regressão Linear
 ==========================
 Aplicação Python para treinar e avaliar um modelo de regressão linear
-usando um dataset de preços de imóveis.
+usando o dataset forestfires.
 
 Uso:
     python regression_model.py
@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 # 1. Carregamento e exploração do dataset
 # ---------------------------------------------------------------------------
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "imoveis.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "forestfires.csv")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "outputs")
 
 
@@ -54,16 +54,21 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
     Retorna:
         X_train_sc, X_test_sc : arrays normalizados
         y_train, y_test       : séries do alvo
-        feature_names         : lista com os nomes das features
+        encoded_feature_names : lista com os nomes das features após codificação
         scaler                : objeto StandardScaler ajustado
     """
+    if target not in df.columns:
+        raise ValueError(
+            f"Coluna alvo '{target}' não encontrada. Colunas disponíveis: {list(df.columns)}"
+        )
+
     feature_names = [c for c in df.columns if c != target]
-    X = df[feature_names].values
+    features_df = df[feature_names]
+    categorical_columns = features_df.select_dtypes(include=["object", "category", "string"]).columns.tolist()
+    X = pd.get_dummies(features_df, columns=categorical_columns, dtype=float, drop_first=True)
     y = df[target].values
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
     scaler = StandardScaler()
     X_train_sc = scaler.fit_transform(X_train)
@@ -72,7 +77,8 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
     print(f"Divisão treino/teste : {len(X_train)} / {len(X_test)} amostras")
     print()
 
-    return X_train_sc, X_test_sc, y_train, y_test, feature_names, scaler
+    encoded_feature_names = list(X.columns)
+    return X_train_sc, X_test_sc, y_train, y_test, encoded_feature_names, scaler
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +102,7 @@ def evaluate_model(
     model: LinearRegression,
     X_test: np.ndarray,
     y_test: np.ndarray,
-    feature_names: list,
+    encoded_feature_names: list,
 ) -> np.ndarray:
     """Avalia o modelo e imprime as métricas."""
     y_pred = model.predict(X_test)
@@ -109,9 +115,9 @@ def evaluate_model(
     print("=" * 60)
     print("MÉTRICAS DE AVALIAÇÃO")
     print("=" * 60)
-    print(f"MAE  (Erro Absoluto Médio)      : R$ {mae:>12,.2f}")
-    print(f"MSE  (Erro Quadrático Médio)    : R$ {mse:>12,.2f}")
-    print(f"RMSE (Raiz do MSE)              : R$ {rmse:>12,.2f}")
+    print(f"MAE  (Erro Absoluto Médio)      : {mae:>12,.2f}")
+    print(f"MSE  (Erro Quadrático Médio)    : {mse:>12,.2f}")
+    print(f"RMSE (Raiz do MSE)              : {rmse:>12,.2f}")
     print(f"R²   (Coeficiente de Determinação): {r2:.4f}")
     print()
 
@@ -120,7 +126,7 @@ def evaluate_model(
     print("=" * 60)
     print(f"{'Feature':<25} {'Coeficiente':>15}")
     print("-" * 42)
-    for name, coef in zip(feature_names, model.coef_):
+    for name, coef in zip(encoded_feature_names, model.coef_):
         print(f"{name:<25} {coef:>15,.2f}")
     print(f"{'Intercepto':<25} {model.intercept_:>15,.2f}")
     print()
@@ -145,9 +151,9 @@ def plot_results(y_test: np.ndarray, y_pred: np.ndarray, output_dir: str) -> Non
         max(y_test.max(), y_pred.max()) * 1.05,
     ]
     axes[0].plot(lims, lims, "r--", linewidth=1.5, label="Predição perfeita")
-    axes[0].set_xlabel("Valor Real (R$)")
-    axes[0].set_ylabel("Valor Predito (R$)")
-    axes[0].set_title("Valor Real vs Valor Predito")
+    axes[0].set_xlabel("Área real queimada (ha)")
+    axes[0].set_ylabel("Área predita (ha)")
+    axes[0].set_title("Área Real vs Área Predita")
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
@@ -155,13 +161,13 @@ def plot_results(y_test: np.ndarray, y_pred: np.ndarray, output_dir: str) -> Non
     residuals = y_test - y_pred
     axes[1].hist(residuals, bins=30, color="steelblue", edgecolor="white", alpha=0.8)
     axes[1].axvline(0, color="red", linestyle="--", linewidth=1.5, label="Resíduo = 0")
-    axes[1].set_xlabel("Resíduo (R$)")
+    axes[1].set_xlabel("Resíduo (ha)")
     axes[1].set_ylabel("Frequência")
     axes[1].set_title("Distribuição dos Resíduos")
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
-    plt.suptitle("Avaliação do Modelo de Regressão Linear", fontsize=14, fontweight="bold")
+    plt.suptitle("Avaliação do Modelo de Regressão Linear - Forest Fires", fontsize=14, fontweight="bold")
     plt.tight_layout()
 
     output_path = os.path.join(output_dir, "avaliacao_modelo.png")
@@ -177,13 +183,13 @@ def plot_results(y_test: np.ndarray, y_pred: np.ndarray, output_dir: str) -> Non
 def main():
     df = load_dataset(DATA_PATH)
 
-    X_train, X_test, y_train, y_test, feature_names, scaler = preprocess(
-        df, target="preco"
+    X_train, X_test, y_train, y_test, encoded_feature_names, scaler = preprocess(
+        df, target="area"
     )
 
     model = train_model(X_train, y_train)
 
-    y_pred = evaluate_model(model, X_test, y_test, feature_names)
+    y_pred = evaluate_model(model, X_test, y_test, encoded_feature_names)
 
     plot_results(y_test, y_pred, OUTPUT_DIR)
 
