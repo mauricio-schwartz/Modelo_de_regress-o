@@ -58,7 +58,9 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
         scaler                : objeto StandardScaler ajustado
     """
     if target not in df.columns:
-        raise ValueError(f"Coluna alvo '{target}' não encontrada no dataset.")
+        raise ValueError(
+            f"Coluna alvo '{target}' não encontrada. Colunas disponíveis: {list(df.columns)}"
+        )
 
     feature_names = [c for c in df.columns if c != target]
     features_df = df[feature_names]
