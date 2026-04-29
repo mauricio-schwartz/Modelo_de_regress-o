@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 # 1. Carregamento e exploração do dataset
 # ---------------------------------------------------------------------------
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "forestfires.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "forestfires.csv")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "outputs")
 
 
@@ -63,7 +63,7 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
     feature_names = [c for c in df.columns if c != target]
     features_df = df[feature_names]
     categorical_columns = features_df.select_dtypes(include=["object", "category", "string"]).columns.tolist()
-    X = pd.get_dummies(features_df, columns=categorical_columns, dtype=float)
+    X = pd.get_dummies(features_df, columns=categorical_columns, dtype=float, drop_first=True)
     y = df[target].values
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
