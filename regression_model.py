@@ -57,8 +57,12 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
         feature_names         : lista com os nomes das features
         scaler                : objeto StandardScaler ajustado
     """
+    if target not in df.columns:
+        raise ValueError(f"Coluna alvo '{target}' não encontrada no dataset.")
+
     feature_names = [c for c in df.columns if c != target]
-    X = pd.get_dummies(df[feature_names], columns=["month", "day"], dtype=float)
+    categorical_columns = df[feature_names].select_dtypes(include=["object", "category"]).columns.tolist()
+    X = pd.get_dummies(df[feature_names], columns=categorical_columns, dtype=float)
     y = df[target].values
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
@@ -175,7 +179,7 @@ def plot_results(y_test: np.ndarray, y_pred: np.ndarray, output_dir: str) -> Non
 def main():
     df = load_dataset(DATA_PATH)
 
-    X_train, X_test, y_train, y_test, feature_names, scaler = preprocess(
+    X_train, X_test, y_train, y_test, feature_names, _ = preprocess(
         df, target="area"
     )
 
