@@ -61,7 +61,7 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
         raise ValueError(f"Coluna alvo '{target}' não encontrada no dataset.")
 
     feature_names = [c for c in df.columns if c != target]
-    categorical_columns = df[feature_names].select_dtypes(include=["object", "category"]).columns.tolist()
+    categorical_columns = df[feature_names].select_dtypes(include=["object", "category", "string"]).columns.tolist()
     X = pd.get_dummies(df[feature_names], columns=categorical_columns, dtype=float)
     y = df[target].values
 
