@@ -54,7 +54,7 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
     Retorna:
         X_train_sc, X_test_sc : arrays normalizados
         y_train, y_test       : séries do alvo
-        feature_names         : lista com os nomes das features
+        encoded_feature_names : lista com os nomes das features após codificação
         scaler                : objeto StandardScaler ajustado
     """
     if target not in df.columns:
@@ -75,7 +75,8 @@ def preprocess(df: pd.DataFrame, target: str, test_size: float = 0.2, random_sta
     print(f"Divisão treino/teste : {len(X_train)} / {len(X_test)} amostras")
     print()
 
-    return X_train_sc, X_test_sc, y_train, y_test, list(X.columns), scaler
+    encoded_feature_names = list(X.columns)
+    return X_train_sc, X_test_sc, y_train, y_test, encoded_feature_names, scaler
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +100,7 @@ def evaluate_model(
     model: LinearRegression,
     X_test: np.ndarray,
     y_test: np.ndarray,
-    feature_names: list,
+    encoded_feature_names: list,
 ) -> np.ndarray:
     """Avalia o modelo e imprime as métricas."""
     y_pred = model.predict(X_test)
@@ -123,7 +124,7 @@ def evaluate_model(
     print("=" * 60)
     print(f"{'Feature':<25} {'Coeficiente':>15}")
     print("-" * 42)
-    for name, coef in zip(feature_names, model.coef_):
+    for name, coef in zip(encoded_feature_names, model.coef_):
         print(f"{name:<25} {coef:>15,.2f}")
     print(f"{'Intercepto':<25} {model.intercept_:>15,.2f}")
     print()
@@ -180,13 +181,13 @@ def plot_results(y_test: np.ndarray, y_pred: np.ndarray, output_dir: str) -> Non
 def main():
     df = load_dataset(DATA_PATH)
 
-    X_train, X_test, y_train, y_test, feature_names, scaler = preprocess(
+    X_train, X_test, y_train, y_test, encoded_feature_names, scaler = preprocess(
         df, target="area"
     )
 
     model = train_model(X_train, y_train)
 
-    y_pred = evaluate_model(model, X_test, y_test, feature_names)
+    y_pred = evaluate_model(model, X_test, y_test, encoded_feature_names)
 
     plot_results(y_test, y_pred, OUTPUT_DIR)
 
